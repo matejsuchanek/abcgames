@@ -91,8 +91,8 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
                 continue
             with self.db.cursor() as cur:
                 cur.execute('SELECT description FROM descriptions WHERE '
-                            'item = %s AND lang = %s', (item, lang))
-                if desc in map(lambda row: row[0].decode('utf-8'), cur.fetchall()):
+                            'item = %s AND lang = %s', (item.id, self.site.lang))
+                if desc in map(lambda row: row[0], cur.fetchall()):
                     continue
                 cur.execute(
                     'INSERT INTO descriptions (item, lang, random, description)'
