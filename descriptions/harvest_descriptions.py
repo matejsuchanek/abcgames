@@ -32,7 +32,7 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
             frpattern % '|'.join(self.site.namespaces[6]))
         self.FORMATTING_REGEX = re.compile("('{5}|'{2,3})")
         self.REF_REGEX = re.compile(r'<ref.*?(>.*?</ref|/)>')
-        self.regex = self.get_regex_for_title(r'[^\|\]]+')
+        self.regex = self.get_regex_for_title(r'[^\|\]<>]+')
 
     def get_regex_for_title(self, escaped_title):
         pattern = r'^\*+ *\[\[(%s)(?:\|[^][]+)?\]\]' % escaped_title
@@ -87,12 +87,18 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
                 continue
             target = pywikibot.Page(self.site, item.getSitelink(self.site))
             desc = descriptions.get(target)
-            if self.validate_description(desc):
-                with self.db.cursor() as cur:
-                    cur.execute('''
-INSERT INTO descriptions (item, lang, random, description)
-VALUES (%s, %s, %s, %s);''', (item.id, self.site.lang, random.randrange(2**32), desc))
-                    add = True
+            if not self.validate_description(desc):
+                continue
+            with self.db.cursor() as cur:
+                cur.execute('SELECT description FROM descriptions WHERE '
+                            'item = %s AND lang = %s', (item, lang))
+                if desc in map(lambda row: row[0].decode('utf-8'), cur.fetchall()):
+                    continue
+                cur.execute(
+                    'INSERT INTO descriptions (item, lang, random, description)'
+                    ' VALUES (%s, %s, %s, %s);',
+                    (item.id, self.site.lang, random.randrange(2**32), desc))
+                add = True
         if add:
             self.db.commit()
 

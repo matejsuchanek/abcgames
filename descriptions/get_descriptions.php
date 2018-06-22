@@ -23,7 +23,7 @@ if ( $action == 'desc' ) {
 
 	$data = [
 		'label' => [ 'en' => 'Items without descriptions' ] ,
-		'description' => [ 'en' => '' ],
+		'description' => [ 'en' => 'Add descriptions found inside Wikipedia articles' ],
 		'icon' => '',
 	];
 
@@ -116,7 +116,9 @@ if ( $action == 'desc' ) {
 	}
 
 } else {
-	
+
+	$data['error'] = 'Invalid action!';
+
 }
 
 mysql_close( $db );
