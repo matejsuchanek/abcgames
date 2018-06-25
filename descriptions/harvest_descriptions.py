@@ -32,7 +32,7 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
             frpattern % '|'.join(self.site.namespaces[6]))
         self.FORMATTING_REGEX = re.compile("('{5}|'{2,3})")
         self.REF_REGEX = re.compile(r'<ref.*?(>.*?</ref|/)>')
-        self.regex = self.get_regex_for_title(r'[^\|\]<>]+')
+        self.regex = self.get_regex_for_title(r'[^\[\|\]<>]+')
 
     def get_regex_for_title(self, escaped_title):
         pattern = r'^\*+ *\[\[(%s)(?:\|[^][]+)?\]\]' % escaped_title
@@ -66,7 +66,7 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
             desc = desc.replace(' ' * 2, ' ')
         if re.search('[^IVX]\.$', desc) or desc.endswith(tuple(',:')):
             desc = desc[:-1].rstrip()
-        if desc.startswith(('a ', 'an ')):
+        if desc.startswith(('a ', 'an ', 'the ')):
             desc = desc.partition(' ')[2]
         return desc
 

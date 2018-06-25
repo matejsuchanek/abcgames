@@ -24,7 +24,7 @@ if ( $action == 'desc' ) {
 	$data = [
 		'label' => [ 'en' => 'Items without descriptions' ] ,
 		'description' => [ 'en' => 'Add descriptions found inside Wikipedia articles' ],
-		'icon' => '',
+		'icon' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/AIGA_information.svg/120px-AIGA_information.svg.png',
 	];
 
 } elseif ( $action == 'tiles' ) {
@@ -68,7 +68,7 @@ if ( $action == 'desc' ) {
 			$tile['id'] = $row->id;
 			$tile['sections'] = [
 				[ 'type' => 'item', 'q' => $row->item ],
-				[ 'type' => 'text', 'title' => 'Is this a good description?', 'text' => $row->description ],
+				[ 'type' => 'text', 'title' => 'Is this a good description for this item?', 'text' => $row->description ],
 			];
 			$tile['controls'] = [
 				[
