@@ -97,7 +97,7 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
                 cur.execute(
                     'INSERT INTO descriptions (item, lang, random, description)'
                     ' VALUES (%s, %s, %s, %s);',
-                    (item.id, self.site.lang, random.randrange(2**32), desc))
+                    (item.id, self.site.lang, random.randrange(2**31), desc))
                 add = True
         if add:
             self.db.commit()
