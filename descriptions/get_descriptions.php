@@ -1,8 +1,10 @@
 <?php
 
 header( 'Content-type: application/json' );
+error_reporting( E_DEPRECATED - 1 );
 //ini_set('display_errors', 1);
-//error_reporting(E_ALL);
+//ini_set('memory_limit','200M');
+//set_time_limit ( 30 );
 
 function get_value( $value, $fallback = '' ) {
 	return !empty( $_GET[$value] ) ? $_GET[$value] : $fallback;
@@ -32,7 +34,7 @@ if ( $action == 'desc' ) {
 		'label' => [ 'en' => 'Items without descriptions' ] ,
 		'description' => [ 'en' => 'Add descriptions found inside Wikipedia articles' ],
 		'instructions' => [ 'en' => '* Please read <a href="https://www.wikidata.org/wiki/Help:Description">Help:Description</a> ' .
-			'before playing to know what a good description looks like.\n* Currently available in English and Czech. O:)' ],
+			"before playing to know what a good description looks like.\n* Currently available in English and Czech. O:)" ],
 		'icon' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/AIGA_information.svg/120px-AIGA_information.svg.png',
 	];
 
@@ -123,7 +125,7 @@ if ( $action == 'desc' ) {
 
 } elseif ( $action == 'log_action' ) {
 
-	$tile = get_value( 'tile', : '' );
+	$tile = get_value( 'tile', '' );
 	$decision = get_value( 'decision', '' );
 	if ( $decision === 'yes' ) {
 		$query = "SELECT lang, item FROM descriptions WHERE id = '$tile'";

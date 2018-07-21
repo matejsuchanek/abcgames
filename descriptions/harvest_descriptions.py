@@ -7,15 +7,11 @@ import pywikibot
 import random
 import re
 
-from pywikibot import link_regex as LINK_REGEX
+from pywikibot import link_regex as LINK_REGEX, textlib
 from pywikibot.bot import CurrentPageBot, SingleSiteBot
 from pywikibot.pagegenerators import (
     GeneratorFactory,
     PreloadingEntityGenerator,
-)
-from pywikibot.textlib import (
-    FILE_LINK_REGEX as frpattern,
-    NESTED_TEMPLATE_REGEX,
 )
 
 
@@ -24,14 +20,12 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
     def __init__(self, db, **kwargs):
         self.availableOptions.update({
             'min_words': 2,
+            'min_chars': 10,
+            'max_chars': 100,
         })
         super(DescriptionsBot, self).__init__(**kwargs)
         self.db = db
-        self.COMMENT_REGEX = re.compile('<!--.*?-->') # todo: from textlib
-        self.FILE_LINK_REGEX = re.compile(
-            frpattern % '|'.join(self.site.namespaces[6]))
         self.FORMATTING_REGEX = re.compile("('{5}|'{2,3})")
-        self.REF_REGEX = re.compile(r'<ref.*?(>.*?</ref|/)>')
         self.regex = self.get_regex_for_title(r'[^\[\|\]<>]+')
 
     def get_regex_for_title(self, escaped_title):
@@ -49,21 +43,24 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
             return m.group('title').strip()
 
     def validate_description(self, desc):
-        return (bool(desc) and len(desc.split()) >= self.getOption('min_words'))
+        return (
+            bool(desc)
+            and len(desc.split()) >= self.getOption('min_words')
+            and self.getOption('min_chars') <= len(desc) <= self.getOption(
+                'max_chars'))
 
-    def parse_description(self, text):
-        desc = self.COMMENT_REGEX.sub('', text)
-        desc = NESTED_TEMPLATE_REGEX.sub('', desc)
-        desc = self.FILE_LINK_REGEX.sub('', desc)
+    def parse_description(self, desc):
         desc = LINK_REGEX.sub(self.handle_link, desc)
         desc = self.FORMATTING_REGEX.sub('', desc).replace('&nbsp;', ' ')
-        desc = self.REF_REGEX.sub('', desc.strip())
         desc = re.sub(r' *\([^)]+\)$', '', desc.rstrip())
         desc = desc.partition(';')[0]
         desc = re.sub(r'^.*\) [-–] +', '', desc)
         desc = re.sub(r'^\([^)]+\) +', '', desc)
         while ' ' * 2 in desc:
             desc = desc.replace(' ' * 2, ' ')
+        match = re.search(r'[^A-Z]\. [A-Z]', desc)
+        if match:
+            desc = desc[:match.end()-2]
         if re.search('[^IVX]\.$', desc) or desc.endswith(tuple(',:')):
             desc = desc[:-1].rstrip()
         if desc.startswith(('a ', 'an ', 'the ')):
@@ -71,6 +68,9 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
         return desc
 
     def get_pages_with_descriptions(self, text):
+        tags = {'category', 'comment', 'file', 'header', 'interwiki', 'nowiki',
+                'pre', 'ref', 'source', 'timeline', 'template'}
+        text = textlib.removeDisabledParts(text, tags, site=self.site)
         data = {}
         for match in self.regex.finditer(text):
             title, desc = match.groups()
