@@ -26,7 +26,7 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
         super(DescriptionsBot, self).__init__(**kwargs)
         self.db = db
         self.FORMATTING_REGEX = re.compile("('{5}|'{2,3})")
-        self.regex = self.get_regex_for_title(r'[^\[\|\]<>]+')
+        self.regex = self.get_regex_for_title(r'[^\[\|\]{}<>]+')
 
     def get_regex_for_title(self, escaped_title):
         pattern = r'^\*+ *\[\[(%s)(?:\|[^][]+)?\]\]' % escaped_title
@@ -55,12 +55,14 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
         desc = re.sub(r' *\([^)]+\)$', '', desc.rstrip())
         desc = desc.partition(';')[0]
         desc = re.sub(r'^.*\) [-–] +', '', desc)
-        desc = re.sub(r'^\([^)]+\) +', '', desc)
+        desc = re.sub(r'^\([^)]+\),? +', '', desc).strip()
         while ' ' * 2 in desc:
             desc = desc.replace(' ' * 2, ' ')
         match = re.search(r'[^A-Z]\. [A-Z]', desc)
         if match:
-            desc = desc[:match.end()-2]
+            new_desc = desc[:match.end()-2]
+            if not new_desc.endswith(('sv', 'tj', 'tzv', 'např')):
+                desc = new_desc
         if re.search('[^IVX]\.$', desc) or desc.endswith(tuple(',:')):
             desc = desc[:-1].rstrip()
         if desc.startswith(('a ', 'an ', 'the ')):
@@ -68,8 +70,9 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
         return desc
 
     def get_pages_with_descriptions(self, text):
-        tags = {'category', 'comment', 'file', 'header', 'interwiki', 'nowiki',
-                'pre', 'ref', 'source', 'timeline', 'template'}
+        tags = {'category', 'comment', 'file', 'header', 'hyperlink',
+                'interwiki', 'nowiki', 'pre', 'ref', 'source', 'timeline',
+                'template'}
         text = textlib.removeDisabledParts(text, tags, site=self.site)
         data = {}
         for match in self.regex.finditer(text):
