@@ -26,7 +26,7 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
         super(DescriptionsBot, self).__init__(**kwargs)
         self.db = db
         self.FORMATTING_REGEX = re.compile("('{5}|'{2,3})")
-        self.regex = self.get_regex_for_title(r'[^\[\|\]{}<>]+')
+        self.regex = self.get_regex_for_title(r'[^\n\[\|\]{}<>]+')
 
     def get_regex_for_title(self, escaped_title):
         pattern = r'^\*+ *\[\[(%s)(?:\|[^][]+)?\]\]' % escaped_title
