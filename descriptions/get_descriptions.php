@@ -67,9 +67,19 @@ if ( $action == 'desc' ) {
 				continue;
 			}
 			$already[] = $item;
+			//*
 			$check_result = mysql_query(
 				"SELECT term_text FROM wb_terms WHERE term_full_entity_id = '$item'" .
-				" AND term_language = '$lang' AND term_type = 'description'", $wd );
+				" AND term_language = '$lang' AND term_type = 'description' LIMIT 1", $wd );
+			/*/ # see T221764
+			$check_result = mysql_query(
+				"SELECT wbxl_text_id FROM wbt_item_terms " .
+				"JOIN wbt_term_in_lang ON wbit_term_in_lang_id = wbtl_id " .
+				"JOIN wbt_type ON wbtl_type_id = wby_id " .
+				"JOIN wbt_text_in_lang ON wbtl_text_in_lang_id = wbxl_id " .
+				"WHERE wbit_item_id = REPLACE('$item', 'Q', '') AND wbxl_language = '$lang' " .
+				"AND wby_name = 'description' LIMIT 1", $wd );
+			//*/
 			if ( mysql_fetch_object( $check_result ) ) {
 				mysql_query(
 					"UPDATE descriptions SET status = 'REPLACED'" .
