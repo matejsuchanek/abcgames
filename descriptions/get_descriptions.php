@@ -13,11 +13,9 @@ function get_value( $value, $fallback = '' ) {
 function getDBs() {
 	$ts_pw = posix_getpwuid( posix_getuid() );
 	$ts_mycnf = parse_ini_file( $ts_pw['dir'] . '/replica.my.cnf' );
-	$db = mysql_connect( 'tools.db.svc.eqiad.wmflabs', $ts_mycnf['user'], $ts_mycnf['password'] );
-	$wd = mysql_connect( 'wikidatawiki.analytics.db.svc.eqiad.wmflabs', $ts_mycnf['user'], $ts_mycnf['password'] );
-	mysql_select_db( $ts_mycnf['user'] . '__data', $db );
-	mysql_select_db( 'wikidatawiki_p', $wd );
-	mysql_set_charset( 'utf8', $db );
+	$db = mysqli_connect( 'tools.db.svc.eqiad.wmflabs', $ts_mycnf['user'], $ts_mycnf['password'], $ts_mycnf['user'] . '__data' );
+	$wd = mysqli_connect( 'wikidatawiki.analytics.db.svc.eqiad.wmflabs', $ts_mycnf['user'], $ts_mycnf['password'], 'wikidatawiki_p' );
+	mysqli_set_charset( $db, 'utf8' );
 	return [ $db, $wd ];
 }
 
@@ -33,7 +31,7 @@ if ( $action == 'desc' ) {
 	$data = [
 		'label' => [ 'en' => 'Items without descriptions' ] ,
 		'description' => [ 'en' => 'Add descriptions found inside Wikipedia articles' ],
-		'instructions' => [ 'en' => '* Please read <a href="https://www.wikidata.org/wiki/Help:Description">Help:Description</a> ' .
+		'instructions' => [ 'en' => '* Please read [https://www.wikidata.org/wiki/Help:Description Help:Description] ' .
 			"before playing to know what a good description looks like.\n* Currently available in English and Czech. O:)" ],
 		'icon' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/AIGA_information.svg/120px-AIGA_information.svg.png',
 	];
@@ -57,40 +55,43 @@ if ( $action == 'desc' ) {
 			$query .= sprintf( " AND item NOT IN ( '%s' )", implode( "', '", $already ) );
 		}
 		$query .= " ORDER BY random LIMIT " . ($count*2);
-		$result = mysql_query( $query, $db );
+		$result = mysqli_query( $db, $query );
 		if ( !$result ) {
 			continue;
 		}
-		while ( $row = mysql_fetch_object( $result ) ) {
+		while ( $row = mysqli_fetch_object( $result ) ) {
 			$item = $row->item;
 			if ( in_array( $item, $already ) ) {
 				continue;
 			}
 			$already[] = $item;
 			//*
-			$check_result = mysql_query(
+			$check_result = mysqli_query(
+				$wd,
 				"SELECT term_text FROM wb_terms WHERE term_full_entity_id = '$item'" .
-				" AND term_language = '$lang' AND term_type = 'description' LIMIT 1", $wd );
+				" AND term_language = '$lang' AND term_type = 'description' LIMIT 1" );
 			/*/ # see T221764
-			$check_result = mysql_query(
+			$check_result = mysqli_query(
+				$wd,
 				"SELECT wbxl_text_id FROM wbt_item_terms " .
 				"JOIN wbt_term_in_lang ON wbit_term_in_lang_id = wbtl_id " .
 				"JOIN wbt_type ON wbtl_type_id = wby_id " .
 				"JOIN wbt_text_in_lang ON wbtl_text_in_lang_id = wbxl_id " .
 				"WHERE wbit_item_id = REPLACE('$item', 'Q', '') AND wbxl_language = '$lang' " .
-				"AND wby_name = 'description' LIMIT 1", $wd );
+				"AND wby_name = 'description' LIMIT 1" );
 			//*/
-			if ( mysql_fetch_object( $check_result ) ) {
-				mysql_query(
+			if ( mysqli_fetch_object( $check_result ) ) {
+				mysqli_query(
+					$db,
 					"UPDATE descriptions SET status = 'REPLACED'" .
-					" WHERE item = '$item' AND lang = '$lang'", $db );
+					" WHERE item = '$item' AND lang = '$lang'" );
 				continue;
 			}
-			$check_result = mysql_query( "SELECT page_is_redirect FROM page" .
-				" WHERE page_namespace = 0 AND page_title = '$item'", $wd );
-			$item_row = mysql_fetch_object( $check_result );
+			$check_result = mysqli_query( $wd, "SELECT page_is_redirect FROM page" .
+				" WHERE page_namespace = 0 AND page_title = '$item'" );
+			$item_row = mysqli_fetch_object( $check_result );
 			if ( !$item_row || $item_row->page_is_redirect == '1' ) {
-				mysql_query( "UPDATE descriptions SET status = 'DELETED' WHERE item = '$item'", $db );
+				mysqli_query( $db, "UPDATE descriptions SET status = 'DELETED' WHERE item = '$item'" );
 				continue;
 			}
 			$tile = [];
@@ -139,16 +140,16 @@ if ( $action == 'desc' ) {
 	$decision = get_value( 'decision', '' );
 	if ( $decision === 'yes' ) {
 		$query = "SELECT lang, item FROM descriptions WHERE id = '$tile'";
-		$row = mysql_fetch_object( mysql_query( $query, $db ) );
+		$row = mysqli_fetch_object( mysqli_query( $db, $query ) );
 		$query = "UPDATE descriptions SET status = 'DONE' WHERE id = '$tile'";
-		mysql_query( $query, $db );
+		mysqli_query( $db, $query );
 		$query = "UPDATE descriptions SET status = 'REPLACED'";
 		$query .= " WHERE lang = '{$row->lang}' AND item = '{$row->item}'";
 		$query .= " AND status IS NULL";
-		mysql_query( $query, $db );
+		mysqli_query( $db, $query );
 	} elseif ( $decision === 'no' ) {
 		$query = "UPDATE descriptions SET status = 'NO' WHERE id = '$tile'";
-		mysql_query( $query, $db );
+		mysqli_query( $db, $query );
 	}
 
 } else {
@@ -157,8 +158,8 @@ if ( $action == 'desc' ) {
 
 }
 
-mysql_close( $db );
-mysql_close( $wd );
+mysqli_close( $db );
+mysqli_close( $wd );
 
 echo "{$callback}(";
 echo json_encode( $data );
