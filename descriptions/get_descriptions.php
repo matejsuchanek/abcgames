@@ -26,7 +26,7 @@ list( $db, $wd ) = getDBs();
 
 $data = [];
 
-if ( $action == 'desc' ) {
+if ( $action === 'desc' ) {
 
 	$data = [
 		'label' => [ 'en' => 'Items without descriptions' ] ,
@@ -36,12 +36,12 @@ if ( $action == 'desc' ) {
 		'icon' => 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/AIGA_information.svg/120px-AIGA_information.svg.png',
 	];
 
-} elseif ( $action == 'tiles' ) {
+} elseif ( $action === 'tiles' ) {
 
-	$count = get_value( 'num', 1 );
+	$count = (int)get_value( 'num', 1 );
 	$lang = get_value( 'lang', '' );
-	$lang = $lang === 'cs' ? $lang : 'en';
-	$in_cache = get_value( 'in_cache', '' );
+	$lang = ( $lang === 'cs' ) ? $lang : 'en';
+	$in_cache = mysqli_real_escape_string( $db, get_value( 'in_cache', '' ) );
 	$data['tiles'] = [];
 	$already = [];
 	while ( count( $data['tiles'] ) < $count ) {
@@ -71,14 +71,15 @@ if ( $action == 'desc' ) {
 				"SELECT term_text FROM wb_terms WHERE term_full_entity_id = '$item'" .
 				" AND term_language = '$lang' AND term_type = 'description' LIMIT 1" );
 			/*/ # see T221764
+			$item_id = str_replace( 'Q', '', "$item", );
 			$check_result = mysqli_query(
 				$wd,
-				"SELECT wbxl_text_id FROM wbt_item_terms " .
-				"JOIN wbt_term_in_lang ON wbit_term_in_lang_id = wbtl_id " .
-				"JOIN wbt_type ON wbtl_type_id = wby_id " .
-				"JOIN wbt_text_in_lang ON wbtl_text_in_lang_id = wbxl_id " .
-				"WHERE wbit_item_id = REPLACE('$item', 'Q', '') AND wbxl_language = '$lang' " .
-				"AND wby_name = 'description' LIMIT 1" );
+				"SELECT wbxl_text_id FROM wbt_item_terms" .
+				" JOIN wbt_term_in_lang ON wbit_term_in_lang_id = wbtl_id" .
+				" JOIN wbt_type ON wbtl_type_id = wby_id" .
+				" JOIN wbt_text_in_lang ON wbtl_text_in_lang_id = wbxl_id" .
+				" WHERE wbit_item_id = $item_id AND wbxl_language = '$lang'" .
+				" AND wby_name = 'description' LIMIT 1" );
 			//*/
 			if ( mysqli_fetch_object( $check_result ) ) {
 				mysqli_query(
@@ -90,7 +91,7 @@ if ( $action == 'desc' ) {
 			$check_result = mysqli_query( $wd, "SELECT page_is_redirect FROM page" .
 				" WHERE page_namespace = 0 AND page_title = '$item'" );
 			$item_row = mysqli_fetch_object( $check_result );
-			if ( !$item_row || $item_row->page_is_redirect == '1' ) {
+			if ( !$item_row || (int)$item_row->page_is_redirect === 1 ) {
 				mysqli_query( $db, "UPDATE descriptions SET status = 'DELETED' WHERE item = '$item'" );
 				continue;
 			}
@@ -134,9 +135,9 @@ if ( $action == 'desc' ) {
 		}
 	}
 
-} elseif ( $action == 'log_action' ) {
+} elseif ( $action === 'log_action' ) {
 
-	$tile = get_value( 'tile', '' );
+	$tile = mysqli_real_escape_string( $db, get_value( 'tile', '' ) );
 	$decision = get_value( 'decision', '' );
 	if ( $decision === 'yes' ) {
 		$query = "SELECT lang, item FROM descriptions WHERE id = '$tile'";
