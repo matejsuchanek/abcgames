@@ -2,9 +2,9 @@
 
 header( 'Content-type: application/json' );
 error_reporting( E_DEPRECATED - 1 );
+set_time_limit ( 30 );
+ini_set('memory_limit', '100M');
 //ini_set('display_errors', 1);
-//ini_set('memory_limit','200M');
-//set_time_limit ( 30 );
 
 function get_value( $value, $fallback = '' ) {
 	return !empty( $_GET[$value] ) ? $_GET[$value] : $fallback;
@@ -65,13 +65,7 @@ if ( $action === 'desc' ) {
 				continue;
 			}
 			$already[] = $item;
-			//*
-			$check_result = mysqli_query(
-				$wd,
-				"SELECT term_text FROM wb_terms WHERE term_full_entity_id = '$item'" .
-				" AND term_language = '$lang' AND term_type = 'description' LIMIT 1" );
-			/*/ # see T221764
-			$item_id = str_replace( 'Q', '', "$item", );
+			$item_id = str_replace( 'Q', '', "$item" );
 			$check_result = mysqli_query(
 				$wd,
 				"SELECT wbxl_text_id FROM wbt_item_terms" .
@@ -80,7 +74,6 @@ if ( $action === 'desc' ) {
 				" JOIN wbt_text_in_lang ON wbtl_text_in_lang_id = wbxl_id" .
 				" WHERE wbit_item_id = $item_id AND wbxl_language = '$lang'" .
 				" AND wby_name = 'description' LIMIT 1" );
-			//*/
 			if ( mysqli_fetch_object( $check_result ) ) {
 				mysqli_query(
 					$db,
