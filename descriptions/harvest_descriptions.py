@@ -1,11 +1,10 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
-
 import os
-import pymysql
-import pywikibot
 import random
 import re
+
+import pymysql
+import pywikibot
 
 from pywikibot import link_regex as LINK_REGEX, textlib
 from pywikibot.bot import CurrentPageBot, SingleSiteBot
@@ -23,7 +22,7 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
             'min_chars': 10,
             'max_chars': 100,
         })
-        super(DescriptionsBot, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.db = db
         self.FORMATTING_REGEX = re.compile("('{5}|'{2,3})")
         self.regex = self.get_regex_for_title(r'[^\n\[\|\]{}<>]+')
@@ -88,7 +87,7 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
         for item in PreloadingEntityGenerator(descriptions.keys()):
             if self.site.lang in item.descriptions:
                 continue
-            target = pywikibot.Page(self.site, item.getSitelink(self.site))
+            target = pywikibot.Page(item.sitelinks[self.site])
             desc = descriptions.get(target)
             if not self.validate_description(desc):
                 continue
