@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import os
 import random
 import re
@@ -17,7 +16,7 @@ from pywikibot.pagegenerators import (
 class DescriptionsBot(CurrentPageBot, SingleSiteBot):
 
     def __init__(self, db, **kwargs):
-        self.availableOptions.update({
+        self.available_options.update({
             'min_words': 2,
             'min_chars': 10,
             'max_chars': 100,
@@ -34,19 +33,18 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
         return re.compile(pattern, re.M)
 
     @staticmethod
-    def handle_link(m):
-        text = m.group(2)
+    def handle_link(match):
+        text = match[2]
         if text:
             return text.lstrip('|').strip()
         else:
-            return m.group('title').strip()
+            return match['title'].strip()
 
     def validate_description(self, desc):
         return (
-            bool(desc)
-            and len(desc.split()) >= self.getOption('min_words')
-            and self.getOption('min_chars') <= len(desc) <= self.getOption(
-                'max_chars'))
+            desc != ''
+            and len(desc.split()) >= self.opt.min_words
+            and self.opt.min_chars <= len(desc) <= self.opt.max_chars)
 
     def parse_description(self, desc):
         desc = LINK_REGEX.sub(self.handle_link, desc)
@@ -54,24 +52,34 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
         desc = re.sub(r' *\([^)]+\)$', '', desc.rstrip())
         desc = desc.partition(';')[0]
         desc = re.sub(r'^.*\) [-–] +', '', desc)
-        desc = re.sub(r'^\([^)]+\),? +', '', desc).strip()
-        while ' ' * 2 in desc:
-            desc = desc.replace(' ' * 2, ' ')
+        desc = re.sub(r'^\([^)]+\),? +', '', desc)
+        desc = re.sub(' {2,}', ' ', desc).strip()
+
         match = re.search(r'[^A-Z]\. [A-Z]', desc)
         if match:
-            new_desc = desc[:match.end()-2]
-            if not new_desc.endswith(('sv', 'tj', 'tzv', 'např')):
+            new_desc = desc[:match.start()+1].rstrip()
+            if not new_desc.endswith(('sv', 'mj', 'tj', 'tzn', 'tzv', 'např')):
                 desc = new_desc
-        if re.search('[^IVX]\.$', desc) or desc.endswith(tuple(',:')):
+
+        if desc.endswith(tuple(',:')):
             desc = desc[:-1].rstrip()
-        if desc.startswith(('a ', 'an ', 'the ')):
+
+        if desc.endswith('.') \
+           and not desc.endswith((' atd.', ' apod.', ' n. l.')) \
+           and not re.search(r'\b[IVX]+\.$', desc) \
+           and not re.search(r'\b[A-Z]\.[A-Z]\.$', desc):
+            desc = desc[:-1].rstrip()
+
+        if self.site.lang == 'en' \
+           and desc.lower().startswith(('a ', 'an ', 'the ')):
             desc = desc.partition(' ')[2]
+
         return desc
 
     def get_pages_with_descriptions(self, text):
         tags = {'category', 'comment', 'file', 'header', 'hyperlink',
-                'interwiki', 'nowiki', 'pre', 'ref', 'source', 'timeline',
-                'template'}
+                'interwiki', 'nowiki', 'pre', 'ref', 'syntaxhighlight',
+                'template', 'timeline'}
         text = textlib.removeDisabledParts(text, tags, site=self.site)
         data = {}
         for match in self.regex.finditer(text):
@@ -92,13 +100,15 @@ class DescriptionsBot(CurrentPageBot, SingleSiteBot):
             if not self.validate_description(desc):
                 continue
             with self.db.cursor() as cur:
-                cur.execute('SELECT description FROM descriptions WHERE '
-                            'item = %s AND lang = %s', (item.id, self.site.lang))
+                cur.execute(
+                    'SELECT description FROM descriptions'
+                    ' WHERE item = %s AND lang = %s',
+                    (item.id, self.site.lang))
                 if desc in map(lambda row: row[0], cur.fetchall()):
                     continue
                 cur.execute(
                     'INSERT INTO descriptions (item, lang, random, description)'
-                    ' VALUES (%s, %s, %s, %s);',
+                    ' VALUES (%s, %s, %s, %s)',
                     (item.id, self.site.lang, random.randrange(2**31), desc))
                 add = True
         if add:
@@ -110,9 +120,7 @@ def main(*args):
     local_args = pywikibot.handle_args(args)
     site = pywikibot.Site()
     genFactory = GeneratorFactory(site=site)
-    for arg in local_args:
-        if genFactory.handleArg(arg):
-            continue
+    for arg in genFactory.handle_args(local_args):
         if arg.startswith('-'):
             arg, sep, value = arg.partition(':')
             if value != '':
